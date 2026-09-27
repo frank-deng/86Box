@@ -406,6 +406,12 @@ typedef struct {
     x86seg seg_fs;
     x86seg seg_gs;
 
+    /* Bionic (Android/Termux) <sys/ioctl.h> pulls in <asm-generic/termbits.h>,
+       which #defines CR0 as a termios constant, clashing with this member. */
+#ifdef CR0
+#    undef CR0
+#endif
+
     union {
         uint32_t l;
         uint16_t w;
