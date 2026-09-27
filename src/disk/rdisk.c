@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include <86box/86box.h>
 #include <86box/timer.h>
 #include <86box/device.h>
@@ -394,18 +395,21 @@ rdisk_load(const rdisk_t *dev, const char *fn, const int skip_insert)
         const int is_sdi = image_is_sdi(fn);
         const int is_zdi = image_is_zdi(fn);
 
-        dev->drv->fp     = plat_fopen(fn, dev->drv->read_only ? "rb" : "rb+");
+        dev->drv->fp     = dev->drv->read_only ? plat_fopen(fn, "rb") : plat_fopen_locked(fn, "rb+");
         ret              = 1;
 
         if (dev->drv->fp == NULL) {
-            if (!dev->drv->read_only) {
+            /* A write lock held by another 86Box instance (EWOULDBLOCK) must
+               not silently degrade to a read-only mount. */
+            if (dev->drv->read_only || (errno == EWOULDBLOCK)) {
+                ret = rdisk_load_abort(dev);
+            } else {
                 dev->drv->fp = plat_fopen(fn, "rb");
                 if (dev->drv->fp == NULL)
                     ret = rdisk_load_abort(dev);
                 else
                     dev->drv->read_only = 1;
-            } else
-                ret = rdisk_load_abort(dev);
+            }
         }
 
         if (ret) {

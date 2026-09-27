@@ -157,10 +157,12 @@ extern int kbd_req_capture;
 extern int hide_status_bar;
 extern int hide_tool_bar;
 extern int fullscreen_ui_visible;
+extern int lock_image_mount;
 
 /* System-related functions. */
 extern FILE    *plat_fopen(const char *path, const char *mode);
 extern FILE    *plat_fopen64(const char *path, const char *mode);
+extern FILE    *plat_fopen_locked(const char *path, const char *mode);
 extern void     plat_remove(char *path);
 extern int      plat_getcwd(char *bufp, int max);
 extern int      plat_chdir(char *path);

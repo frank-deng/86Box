@@ -63,6 +63,7 @@
 #ifdef Q_OS_UNIX
 #    include <pthread.h>
 #    include <sys/mman.h>
+#    include <sys/file.h>
 #    include <fcntl.h>
 #    include <unistd.h>
 #    include <sys/ioctl.h>
@@ -83,6 +84,9 @@
 #    ifndef NOMINMAX
 #        define NOMINMAX
 #    endif
+#    include <stdio.h>
+#    include <share.h>
+#    include <io.h>
 #    include <windows.h>
 #    include <winioctl.h>
 #endif
@@ -262,6 +266,32 @@ plat_fopen64(const char *path, const char *mode)
     return fopen(filename.toUtf8().constData(), mode);
 #else
     return fopen(QString::fromUtf8(path).toLocal8Bit(), mode);
+#endif
+}
+
+FILE *
+plat_fopen_locked(const char *path, const char *mode)
+{
+    if (!lock_image_mount || !mode || !strchr(mode, '+')) {
+        /* Locking disabled, or opening read-only: no lock needed. */
+        return plat_fopen(path, mode);
+    }
+
+#ifdef Q_OS_WINDOWS
+    /* _SH_DENYRW denies read and write access to all other processes,
+       matching the mandatory exclusive lock semantics DOSBox-X uses. */
+    return _fsopen(QString::fromUtf8(path).toLocal8Bit().constData(), mode, _SH_DENYRW);
+#else
+    FILE *ret = plat_fopen(path, mode);
+    if (ret != NULL && flock(fileno(ret), LOCK_EX | LOCK_NB) < 0) {
+        /* Preserve EWOULDBLOCK so the caller can tell a lock conflict
+           apart from a read-only / permission failure. */
+        const int e = errno;
+        fclose(ret);
+        errno = e;
+        ret = NULL;
+    }
+    return ret;
 #endif
 }
 

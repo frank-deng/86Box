@@ -389,6 +389,7 @@ load_general(void)
 
     force_constant_mouse = ini_section_get_int(cat, "force_constant_mouse", 0);
     fdd_sounds_enabled = ini_section_get_int(cat, "fdd_sounds_enabled", 1);
+    lock_image_mount = ini_section_get_int(cat, "lock_image_mount", 1);
 
     p = ini_section_get_string(cat, "uuid", NULL);
     if (p != NULL)
@@ -3315,6 +3316,11 @@ save_general(void)
         ini_section_delete_var(cat, "fdd_sounds_enabled");
     else
         ini_section_set_int(cat, "fdd_sounds_enabled", fdd_sounds_enabled);
+
+    if (lock_image_mount == 1)
+        ini_section_delete_var(cat, "lock_image_mount");
+    else
+        ini_section_set_int(cat, "lock_image_mount", lock_image_mount);
 
     char cpu_buf[128] = { 0 };
     plat_get_cpu_string(cpu_buf, 128);

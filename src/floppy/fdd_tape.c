@@ -36,6 +36,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include <wchar.h>
 
 #define HAVE_STDARG_H
@@ -2176,10 +2177,17 @@ fdd_tape_load(const char *fn)
         tape.readonly = 1;
     }
 
-    if (tape.readonly)
+    if (tape.readonly) {
         fp = NULL;
-    else
-        fp = plat_fopen((char *) fn, "rb+");
+    } else {
+        fp = plat_fopen_locked((char *) fn, "rb+");
+        if ((fp == NULL) && (errno == EWOULDBLOCK)) {
+            /* Another 86Box instance holds a write lock on this image:
+               refuse to mount it at all instead of falling back to read-only. */
+            fdd_tape_log("Tape: image %s is locked by another instance\n", fn);
+            return;
+        }
+    }
     if (fp == NULL) {
         fp = plat_fopen((char *) fn, "rb");
         if (fp != NULL)

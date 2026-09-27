@@ -864,8 +864,15 @@ img_load(void *priv, char *fn)
     /* Allocate a drive block. */
     dev = (img_t *) calloc(1, sizeof(img_t));
 
-    dev->fp = plat_fopen(fn, "rb+");
+    dev->fp = plat_fopen_locked(fn, "rb+");
     if (dev->fp == NULL) {
+        /* Another 86Box instance holds a write lock on this image: refuse
+           to mount it at all instead of falling back to read-only. */
+        if (errno == EWOULDBLOCK) {
+            free(dev);
+            memset(drv->image_path, 0, sizeof(drv->image_path));
+            return;
+        }
         dev->fp = plat_fopen(fn, "rb");
         if (dev->fp == NULL) {
             free(dev);

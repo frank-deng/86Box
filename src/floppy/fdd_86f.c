@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <assert.h>
+#include <errno.h>
 #include <wchar.h>
 #define HAVE_STDARG_H
 #include <86box/86box.h>
@@ -3761,8 +3762,15 @@ d86f_load(void *priv, char *fn)
 
     drv->writeprot = 0;
 
-    dev->fp = plat_fopen(fn, "rb+");
+    dev->fp = plat_fopen_locked(fn, "rb+");
     if (!dev->fp) {
+        /* Another 86Box instance holds a write lock on this image: refuse
+           to mount it at all instead of falling back to read-only. */
+        if (errno == EWOULDBLOCK) {
+            memset(drv->image_path, 0, sizeof(drv->image_path));
+            free(dev);
+            return;
+        }
         dev->fp = plat_fopen(fn, "rb");
         if (!dev->fp) {
             memset(drv->image_path, 0, sizeof(drv->image_path));

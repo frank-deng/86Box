@@ -359,7 +359,7 @@ hdd_image_load(int id)
         memset(hdd[id].fn, 0, sizeof(hdd[id].fn));
         goto fail_raw;
     }
-    hdd_images[id].file = plat_fopen(fn, "rb+");
+    hdd_images[id].file = plat_fopen_locked(fn, "rb+");
     if (hdd_images[id].file == NULL) {
         /* Failed to open existing hard disk image */
         if (errno == ENOENT) {
@@ -454,6 +454,12 @@ retry_vhd:
             if (ret <= 0)
                 goto fail_raw;
             return ret;
+        } else if (errno == EWOULDBLOCK) {
+            /* Image is locked by another 86Box instance: refuse to mount it
+               instead of silently substituting an empty raw image. */
+            hdd_image_log("Image is locked by another instance: %s\n", fn);
+            memset(hdd[id].fn, 0, sizeof(hdd[id].fn));
+            return 0;
         } else {
             /* Failed for another reason */
             hdd_image_log("Failed for another reason\n");

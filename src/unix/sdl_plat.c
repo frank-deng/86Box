@@ -11,7 +11,11 @@
 
 #ifdef _WIN32
 #    include <direct.h>
+#    include <io.h>
+#    include <share.h>
 #    include <windows.h>
+#else
+#    include <sys/file.h>
 #endif
 
 #include <86box/86box.h>
@@ -54,6 +58,37 @@ FILE *
 plat_fopen64(const char *path, const char *mode)
 {
     return fopen(path, mode);
+}
+
+FILE *
+plat_fopen_locked(const char *path, const char *mode)
+{
+    FILE *ret = NULL;
+
+    if (!lock_image_mount || !mode || !strchr(mode, '+')) {
+        /* Locking disabled, or opening read-only: no lock needed. */
+        return fopen(path, mode);
+    }
+
+#ifdef _WIN32
+    /* _SH_DENYRW denies read and write access to all other processes,
+       matching the mandatory exclusive lock semantics DOSBox-X uses. */
+    ret = _fsopen(path, mode, _SH_DENYRW);
+#else
+    ret = fopen(path, mode);
+    if (ret != NULL) {
+        if (flock(fileno(ret), LOCK_EX | LOCK_NB) < 0) {
+            /* Preserve EWOULDBLOCK so the caller can tell a lock conflict
+               apart from a read-only / permission failure. */
+            const int e = errno;
+            fclose(ret);
+            errno = e;
+            ret = NULL;
+        }
+    }
+#endif
+
+    return ret;
 }
 
 int
