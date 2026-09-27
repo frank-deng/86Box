@@ -31,6 +31,7 @@ extern "C" {
 #include <86box/scsi_device.h>
 #include <86box/cassette.h>
 #include <86box/fdd.h>
+#include <86box/plat.h>
 }
 
 #include "qt_deviceconfig.hpp"
@@ -113,7 +114,11 @@ SettingsStorageControllers::changed()
     has_changed |= cdrom_interface_cfg_changed;
     has_changed |= (cassette_enable         != (ui->checkBoxCassette->isChecked() ? 1 : 0));
 
-    return has_changed ? (SETTINGS_CHANGED | SETTINGS_REQUIRE_HARD_RESET) : 0;
+    /* Image locking is a runtime-only option: it does not need a hard reset. */
+    const int lock_image_mount_changed = (lock_image_mount != (ui->checkBoxLockImageMount->isChecked() ? 1 : 0));
+
+    return (has_changed ? (SETTINGS_CHANGED | SETTINGS_REQUIRE_HARD_RESET) : 0)
+           | (lock_image_mount_changed ? SETTINGS_CHANGED : 0);
 }
 
 void
@@ -157,6 +162,7 @@ SettingsStorageControllers::save(int soft)
     fdc_current[0]          = ui->comboBoxFD->currentData().toInt();
     cdrom_interface_current = ui->comboBoxCDInterface->currentData().toInt();
     cassette_enable         = ui->checkBoxCassette->isChecked() ? 1 : 0;
+    lock_image_mount        = ui->checkBoxLockImageMount->isChecked() ? 1 : 0;
 }
 
 void
@@ -309,6 +315,9 @@ SettingsStorageControllers::onCurrentMachineChanged(int machineId)
         ui->checkBoxCassette->setChecked(false);
         ui->checkBoxCassette->setEnabled(false);
     }
+
+    /* Global (not machine-specific) option. */
+    ui->checkBoxLockImageMount->setChecked(lock_image_mount > 0);
 
     cdromInterfaceCurrent = ui->comboBoxCDInterface->currentData().toInt();
     fdcCurrent[0]         = ui->comboBoxFD->currentData().toInt();

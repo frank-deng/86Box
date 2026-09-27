@@ -241,6 +241,13 @@
          </property>
         </widget>
        </item>
+       <item>
+        <widget class="QCheckBox" name="checkBoxLockImageMount">
+         <property name="text">
+          <string>Lock mounted disk images</string>
+         </property>
+        </widget>
+       </item>
        <item row="5" column="1">
         <spacer name="verticalSpacerGeneral">
          <property name="orientation">
@@ -422,6 +429,7 @@
   <tabstop>comboBoxHD4</tabstop>
   <tabstop>pushButtonHD4</tabstop>
   <tabstop>checkBoxCassette</tabstop>
+  <tabstop>checkBoxLockImageMount</tabstop>
   <tabstop>comboBoxSCSI1</tabstop>
   <tabstop>pushButtonSCSI1</tabstop>
   <tabstop>comboBoxSCSI2</tabstop>

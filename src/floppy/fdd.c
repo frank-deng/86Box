@@ -880,6 +880,15 @@ fdd_load(void *priv, char *fn)
                 }
                 d86f_setup(drv);
                 loaders[c].load(drv, drv->image_path + offs);
+                if (drv->image_path[0] == '\0') {
+                    /* The loader failed (e.g. the image is locked by another
+                       instance): mark the drive empty so the status icon and
+                       menu reflect that nothing is mounted. */
+                    drv->empty = 1;
+                    fdd_set_head(drv, 0);
+                    ui_sb_update_icon_state(SB_FLOPPY | drv->id, 1);
+                    return;
+                }
                 drv->empty = 0;
                 fdd_forced_seek(drv, 0);
                 drv->changed = 1;
