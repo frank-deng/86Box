@@ -528,7 +528,15 @@ MediaMenu::floppyMount(int i, const QString &filename, bool wp)
         else if (drv->read_only)
             filenameBytes = QString::asprintf(R"(wp://%s)", filename.toUtf8().data()).toUtf8();
 
-        fdd_load(&drives[i], filenameBytes.data());
+        const int result = fdd_load(&drives[i], filenameBytes.data());
+        if (result != 1) {
+            if (result == -1)
+                QMessageBox::critical(parentWidget, tr("Mount failed"),
+                                      tr("The image is already mounted by another 86Box instance."));
+            else
+                QMessageBox::critical(parentWidget, tr("Mount failed"),
+                                      tr("Unable to mount the image."));
+        }
         mhm.addImageToHistory(i, ui::MediaType::Floppy, previous_image.filePath(), QString(filenameBytes));
     } else
         mhm.addImageToHistory(i, ui::MediaType::Floppy, previous_image.filePath(), filename);
@@ -1005,14 +1013,22 @@ MediaMenu::rdiskMount(int i, const QString &filename, bool wp)
         else if (rdisk_drives[i].read_only)
             filenameBytes = QString::asprintf(R"(wp://%s)", filename.toUtf8().data()).toUtf8();
 
-        rdisk_load(dev, filenameBytes.data(), 1);
-
-        /* Signal media change to the emulated machine. */
-        rdisk_insert(dev);
-
-        /* The drive was previously empty, transition directly to UNIT ATTENTION. */
-        if (was_empty)
+        const int result = rdisk_load(dev, filenameBytes.data(), 1);
+        if (result != 1) {
+            if (result == -1)
+                QMessageBox::critical(parentWidget, tr("Mount failed"),
+                                      tr("The image is already mounted by another 86Box instance."));
+            else
+                QMessageBox::critical(parentWidget, tr("Mount failed"),
+                                      tr("Unable to mount the image."));
+        } else {
+            /* Signal media change to the emulated machine. */
             rdisk_insert(dev);
+
+            /* The drive was previously empty, transition directly to UNIT ATTENTION. */
+            if (was_empty)
+                rdisk_insert(dev);
+        }
     }
     mhm.addImageToHistory(i, ui::MediaType::RDisk, rdisk_drives[i].prev_image_path, rdisk_drives[i].image_path);
 
@@ -1188,14 +1204,22 @@ MediaMenu::moMount(int i, const QString &filename, bool wp)
         else if (mo_drives[i].read_only)
             filenameBytes = QString::asprintf(R"(wp://%s)", filename.toUtf8().data()).toUtf8();
 
-        mo_load(dev, filenameBytes.data(), 1);
-
-        /* Signal media change to the emulated machine. */
-        mo_insert(dev);
-
-        /* The drive was previously empty, transition directly to UNIT ATTENTION. */
-        if (was_empty)
+        const int result = mo_load(dev, filenameBytes.data(), 1);
+        if (result != 1) {
+            if (result == -1)
+                QMessageBox::critical(parentWidget, tr("Mount failed"),
+                                      tr("The image is already mounted by another 86Box instance."));
+            else
+                QMessageBox::critical(parentWidget, tr("Mount failed"),
+                                      tr("Unable to mount the image."));
+        } else {
+            /* Signal media change to the emulated machine. */
             mo_insert(dev);
+
+            /* The drive was previously empty, transition directly to UNIT ATTENTION. */
+            if (was_empty)
+                mo_insert(dev);
+        }
     }
     mhm.addImageToHistory(i, ui::MediaType::Mo, mo_drives[i].prev_image_path, mo_drives[i].image_path);
 

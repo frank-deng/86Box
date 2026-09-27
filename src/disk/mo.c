@@ -148,11 +148,12 @@ mo_is_empty(const uint8_t id)
     return ret;
 }
 
-void
+int
 mo_load(const mo_t *dev, const char *fn, const int skip_insert)
 {
     const int was_empty = mo_is_empty(dev->id);
     int       ret       = 0;
+    int       locked    = 0;
     int       offs      = 0;
 
     if (strstr(fn, "wp://") == fn) {
@@ -174,6 +175,8 @@ mo_load(const mo_t *dev, const char *fn, const int skip_insert)
             /* A write lock held by another 86Box instance (EWOULDBLOCK) must
                not silently degrade to a read-only mount. */
             if (dev->drv->read_only || (errno == EWOULDBLOCK)) {
+                if (errno == EWOULDBLOCK)
+                    locked = 1;
                 ret = mo_load_abort(dev);
             } else {
                 dev->drv->fp = plat_fopen(fn, "rb");
@@ -236,6 +239,8 @@ mo_load(const mo_t *dev, const char *fn, const int skip_insert)
 
     if (ret)
         ui_sb_update_icon_wp(SB_MO | dev->id, dev->drv->read_only);
+
+    return ret ? 1 : (locked ? -1 : 0);
 }
 
 void

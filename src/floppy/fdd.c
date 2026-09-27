@@ -25,6 +25,7 @@
 #include <string.h>
 #include <wchar.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #define HAVE_STDARG_H
 #include <86box/86box.h>
@@ -811,7 +812,7 @@ fdd_get_densel(void *priv)
     return fdd_drv->densel;
 }
 
-void
+int
 fdd_load(void *priv, char *fn)
 {
     fdd_drive_t *drv = (fdd_drive_t *) priv;
@@ -820,11 +821,11 @@ fdd_load(void *priv, char *fn)
     int         offs = 0;
 
     if (!fn)
-        return;
+        return 0;
 
     /* This drive select line belongs to the tape drive, not to a floppy. */
     if (fdd_tape_present(drv))
-        return;
+        return 1;
 
     if (strstr(fn, "wp://") == fn) {
         offs           = 5;
@@ -849,7 +850,7 @@ fdd_load(void *priv, char *fn)
             drv->empty = 1;
             fdd_set_head(drv, 0);
             ui_sb_update_icon_state(SB_FLOPPY | drv->id, 1);
-            return;
+            return 0;
         }
 
         drv->empty = 0;
@@ -857,12 +858,12 @@ fdd_load(void *priv, char *fn)
         fdd_forced_seek(drv, 0);
         drv->changed = 1;
         ui_sb_update_icon_wp(SB_FLOPPY | drv->id, drv->read_only);
-        return;
+        return 1;
     }
 
     const char *p = path_get_extension(fn);
     if (p == NULL)
-        return;
+        return 0;
     FILE *fp = plat_fopen(fn, "rb");
     if (fp) {
         if (fseek(fp, -1, SEEK_END) == -1)
@@ -881,19 +882,21 @@ fdd_load(void *priv, char *fn)
                 d86f_setup(drv);
                 loaders[c].load(drv, drv->image_path + offs);
                 if (drv->image_path[0] == '\0') {
-                    /* The loader failed (e.g. the image is locked by another
-                       instance): mark the drive empty so the status icon and
-                       menu reflect that nothing is mounted. */
+                    /* The loader failed: mark the drive empty so the status
+                       icon and menu reflect that nothing is mounted. Report a
+                       lock conflict (EWOULDBLOCK) separately so the UI can
+                       tell the user another instance holds the image. */
+                    const int locked = (errno == EWOULDBLOCK);
                     drv->empty = 1;
                     fdd_set_head(drv, 0);
                     ui_sb_update_icon_state(SB_FLOPPY | drv->id, 1);
-                    return;
+                    return locked ? -1 : 0;
                 }
                 drv->empty = 0;
                 fdd_forced_seek(drv, 0);
                 drv->changed = 1;
                 ui_sb_update_icon_wp(SB_FLOPPY | drv->id, drv->read_only);
-                return;
+                return 1;
             }
             c++;
         }
@@ -902,6 +905,7 @@ fdd_load(void *priv, char *fn)
     fdd_set_head(drv, 0);
     memset(drv->image_path, 0, sizeof(drv->image_path));
     ui_sb_update_icon_state(SB_FLOPPY | drv->id, 1);
+    return 0;
 }
 
 void

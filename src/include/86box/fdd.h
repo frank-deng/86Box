@@ -209,7 +209,7 @@ extern int curdrive;
 extern int     fdd_time;
 extern int64_t floppytime;
 
-extern void fdd_load(void *priv, char *fn);
+extern int fdd_load(void *priv, char *fn);
 extern void fdd_new(void *priv, char *fn);
 extern void fdd_close(void *priv);
 extern void fdd_init(void);

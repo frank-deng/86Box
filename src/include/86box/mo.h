@@ -192,7 +192,7 @@ extern void mo_hard_reset(void);
 
 extern void mo_reset(scsi_common_t *sc);
 extern int  mo_is_empty(const uint8_t id);
-extern void mo_load(const mo_t *dev, const char *fn, const int skip_insert);
+extern int mo_load(const mo_t *dev, const char *fn, const int skip_insert);
 extern void mo_close(void);
 
 #ifdef __cplusplus
